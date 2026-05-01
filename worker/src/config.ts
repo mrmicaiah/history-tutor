@@ -52,3 +52,30 @@ export const CORS_ALLOWED_ORIGINS: ReadonlyArray<string> = [
 
 /** Max body size accepted on /api/chat (matches the Zod schema). */
 export const MAX_CHAT_MESSAGE_CHARS = 8000;
+
+// ---------------------------------------------------------------------------
+// Compaction (Stage 3)
+// ---------------------------------------------------------------------------
+
+/** Verbatim turns above this count trigger a compaction pass. */
+export const COMPACTION_TRIGGER_TURNS = 30;
+
+/** Number of oldest turns folded into the summary per compaction pass. */
+export const COMPACTION_BATCH_SIZE = 10;
+
+/**
+ * Steady-state floor for the verbatim window after a compaction pass.
+ * Informational only -- the actual floor is `TRIGGER - BATCH_SIZE` and is
+ * enforced by the trigger / batch values above. Kept as a named constant so
+ * the chosen behavior is self-documenting.
+ */
+export const COMPACTION_KEEP_RECENT = 20;
+
+/**
+ * Smaller / cheaper model for the summarization pass. Compaction does not
+ * need the tutor's reasoning quality -- it's compressive paraphrase.
+ */
+export const COMPACTION_MODEL = 'claude-haiku-4-5';
+
+/** Token budget for the summary text. ~300-500 words plus headroom. */
+export const MAX_OUTPUT_TOKENS_COMPACTION = 1500;

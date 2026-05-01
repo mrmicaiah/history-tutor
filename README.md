@@ -96,8 +96,8 @@ or `wrangler pages deploy pages/public`. Stage 1 ships only a placeholder.
 | ----: | --------------------------------------------------- | :----: |
 |     1 | Scaffolding, D1 schema, health check                |   ✓    |
 |     2 | Chat route, PIN gate, Claude integration, logging   |   ✓    |
-|     3 | Knowledge map types and persistence                 |   —    |
-|     4 | Compaction job and evaluation pass                  |   —    |
+|     3 | Knowledge map + summary + compaction (memory layer) |   ✓    |
+|     4 | Real tutor prompt + evaluation pass                 |   —    |
 |     5 | Frontend                                            |   —    |
 
 ## API surface (Stage 2)
