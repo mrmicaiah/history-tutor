@@ -13,9 +13,26 @@
   display: flex;
   justify-content: flex-end;
   align-items: center;
+  gap: 10px;
   padding: 6px 12px;
   border-bottom: 1px solid var(--rule);
   background: var(--paper);
+}
+
+/*
+ * Stage 6.4: secondary label exposing the tap-to-replay affordance.
+ * Italic serif keeps it consistent with the Stage 6.2 personal messages —
+ * the small "human voice" thread of the UI. Non-interactive; hidden
+ * entirely (display: none) when audio is disabled.
+ */
+.replay-hint {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.8125rem;
+  color: var(--ink-faint);
+  line-height: 1.3;
+  user-select: none;
+  pointer-events: none;
 }
 
 .audio-toggle {

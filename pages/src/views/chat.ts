@@ -82,8 +82,24 @@ export function ChatView(): HTMLElement {
 
 function ChatHeader(): HTMLElement {
   const header = el('div', { class: 'chat-header' });
-  header.append(AudioToggle());
+  header.append(ReplayHint(), AudioToggle());
   return header;
+}
+
+/**
+ * Quiet text label that exposes the otherwise-hidden tap-to-replay
+ * affordance from Stage 6.3. Visible only when audio is enabled — when
+ * audio is off there's nothing to replay and the hint would mislead.
+ * Non-interactive (`pointer-events: none`); informational only.
+ */
+function ReplayHint(): HTMLSpanElement {
+  const hint = el('span', { class: 'replay-hint' }, 'Tap a message to replay');
+  function applyState(enabled: boolean): void {
+    hint.style.display = enabled ? '' : 'none';
+  }
+  applyState(app.get().audio.enabled);
+  subscribeSlice(app, (s) => s.audio.enabled, applyState);
+  return hint;
 }
 
 function AudioToggle(): HTMLButtonElement {
