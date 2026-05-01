@@ -102,26 +102,47 @@ export interface AppState {
     hydrated: boolean;
   };
   audio: {
-    /** When true, every new tutor reply is auto-played. Persisted to localStorage. */
-    autoplay: boolean;
+    /**
+     * When true: new tutor replies auto-play, and tapping any prior tutor
+     * bubble replays it. When false: nothing plays, tapping bubbles is a
+     * no-op. Persisted to localStorage as the string "true" / "false".
+     */
+    enabled: boolean;
   };
 }
 
-const AUTOPLAY_STORAGE_KEY = 'audio_autoplay';
+const AUDIO_STORAGE_KEY = 'audio_enabled';
+const LEGACY_AUTOPLAY_KEY = 'audio_autoplay';
 
-/** Read the auto-play preference from localStorage. Default true. Tolerant of privacy mode. */
-export function loadAutoplayPreference(): boolean {
+/**
+ * Read the audio-enabled preference from localStorage. Defaults to true.
+ *
+ * Migrates from the Stage 6.1 `audio_autoplay` key on first load: if the
+ * new key is unset and the legacy key exists, copy the value over and
+ * delete the legacy key. Tolerant of privacy-mode storage failures.
+ */
+export function loadAudioEnabledPreference(): boolean {
   try {
-    return localStorage.getItem(AUTOPLAY_STORAGE_KEY) !== 'false';
+    const current = localStorage.getItem(AUDIO_STORAGE_KEY);
+    if (current !== null) return current !== 'false';
+
+    const legacy = localStorage.getItem(LEGACY_AUTOPLAY_KEY);
+    if (legacy !== null) {
+      const enabled = legacy !== 'false';
+      localStorage.setItem(AUDIO_STORAGE_KEY, String(enabled));
+      localStorage.removeItem(LEGACY_AUTOPLAY_KEY);
+      return enabled;
+    }
+    return true;
   } catch {
     return true;
   }
 }
 
-/** Persist the auto-play preference. Silent on storage failure. */
-export function saveAutoplayPreference(value: boolean): void {
+/** Persist the audio-enabled preference. Silent on storage failure. */
+export function saveAudioEnabledPreference(value: boolean): void {
   try {
-    localStorage.setItem(AUTOPLAY_STORAGE_KEY, String(value));
+    localStorage.setItem(AUDIO_STORAGE_KEY, String(value));
   } catch {
     /* storage unavailable; preference will reset on next reload */
   }
@@ -150,6 +171,6 @@ export const app = new Store<AppState>({
     hydrated: false,
   },
   audio: {
-    autoplay: loadAutoplayPreference(),
+    enabled: loadAudioEnabledPreference(),
   },
 });

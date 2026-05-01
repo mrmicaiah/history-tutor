@@ -1,34 +1,28 @@
 import {
   app,
-  saveAutoplayPreference,
+  saveAudioEnabledPreference,
   subscribeSlice,
   type ChatMessage,
 } from '../state';
 import { api, ApiError } from '../api';
 import { clearChildren, el, on } from '../lib/dom';
-import { MessageAudio, type AudioState } from '../components/audio-player';
-import {
-  ICON_VOLUME_OFF,
-  ICON_VOLUME_ON,
-  SPEAKER_ICONS,
-  SPEAKER_LABELS,
-} from '../components/audio-icons';
+import { MessageAudio, stopAllAudio } from '../components/audio-player';
+import { ICON_VOLUME_OFF, ICON_VOLUME_ON } from '../components/audio-icons';
 import { startThinkingRotation } from '../components/thinking-rotation';
 
 /**
  * Chat view: scrollable transcript on top, sticky composer at bottom, and
- * a small auto-play toggle in the view header. Tutor messages have no
- * chrome except a subtle speaker icon for audio playback. User messages
- * get a bubble. Plain text only — the tutor prompt forbids markdown.
+ * a single global audio toggle in the header.
  *
- * Audio:
- *   - Each assistant message lazily owns one `MessageAudio`. We cache them
- *     in `audioPlayers` keyed by `msg.ts` so re-renders don't lose load
- *     state.
- *   - When auto-play is on, a new tutor reply triggers `play()` once. If
- *     the browser blocks (no recent user gesture), the speaker icon shows
- *     the error state and the user can tap to retry — that tap IS a user
- *     gesture and will succeed.
+ * Audio model (Stage 6.3):
+ *   - One toggle in the header is the master enable. ON by default.
+ *   - When ON: every new tutor reply auto-plays; tapping any prior tutor
+ *     bubble replays that message (cancels current playback first).
+ *   - When OFF: nothing plays automatically; tapping bubbles is a no-op;
+ *     flipping ON→OFF mid-playback stops the current audio immediately.
+ *
+ * `MessageAudio` instances are cached per `msg.ts` in `audioPlayers` so
+ * replay after the first play is instant (cached blob URL + seek 0).
  */
 
 const audioPlayers = new Map<number, MessageAudio>();
@@ -48,6 +42,14 @@ export function ChatView(): HTMLElement {
   const messagesEl = el('div', { class: 'chat-messages' });
   const composer = ChatComposer();
   view.append(header, messagesEl, composer);
+
+  // Reflect audio-enabled state on the chat-view element so CSS can toggle
+  // bubble cursor + tap-flash without re-rendering bubbles on every change.
+  function applyAudioAttr(enabled: boolean): void {
+    view.dataset.audioEnabled = enabled ? 'true' : 'false';
+  }
+  applyAudioAttr(app.get().audio.enabled);
+  subscribeSlice(app, (s) => s.audio.enabled, applyAudioAttr);
 
   // Stable thinking element. Owned by the view closure so the rotation
   // timer survives across `renderMessages` calls (which clear messagesEl
@@ -75,38 +77,34 @@ export function ChatView(): HTMLElement {
 }
 
 // ---------------------------------------------------------------------------
-// Header (auto-play toggle)
+// Header (master audio toggle)
 // ---------------------------------------------------------------------------
 
 function ChatHeader(): HTMLElement {
   const header = el('div', { class: 'chat-header' });
-  const toggle = AutoplayToggle();
-  header.append(toggle);
+  header.append(AudioToggle());
   return header;
 }
 
-function AutoplayToggle(): HTMLButtonElement {
+function AudioToggle(): HTMLButtonElement {
   const btn = el('button', {
     type: 'button',
-    className: 'autoplay-toggle',
-    title: 'Toggle auto-play for tutor replies',
+    className: 'audio-toggle',
   }) as HTMLButtonElement;
-  function applyState(autoplay: boolean): void {
-    btn.dataset.on = autoplay ? 'true' : 'false';
-    btn.setAttribute('aria-pressed', autoplay ? 'true' : 'false');
-    btn.setAttribute(
-      'aria-label',
-      autoplay ? 'Auto-play tutor audio: on' : 'Auto-play tutor audio: off',
-    );
-    btn.innerHTML = autoplay ? ICON_VOLUME_ON : ICON_VOLUME_OFF;
+  function applyState(enabled: boolean): void {
+    btn.dataset.on = enabled ? 'true' : 'false';
+    btn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    btn.setAttribute('aria-label', enabled ? 'Audio on' : 'Audio off');
+    btn.innerHTML = enabled ? ICON_VOLUME_ON : ICON_VOLUME_OFF;
   }
-  applyState(app.get().audio.autoplay);
+  applyState(app.get().audio.enabled);
   on(btn, 'click', () => {
-    const next = !app.get().audio.autoplay;
-    app.patch('audio', { autoplay: next });
-    saveAutoplayPreference(next);
+    const next = !app.get().audio.enabled;
+    app.patch('audio', { enabled: next });
+    saveAudioEnabledPreference(next);
+    if (!next) stopAllAudio();
   });
-  subscribeSlice(app, (s) => s.audio.autoplay, applyState);
+  subscribeSlice(app, (s) => s.audio.enabled, applyState);
   return btn;
 }
 
@@ -142,38 +140,32 @@ function renderMessages(
   }
 }
 
-
+/**
+ * Render a single bubble. Assistant bubbles are tappable for replay (no-op
+ * when audio is disabled). User bubbles are inert. The interactivity hint
+ * (cursor, tap-flash) is gated by the parent's `data-audio-enabled` attr
+ * via CSS, so we don't need to re-render bubbles when the toggle flips.
+ */
 function MessageBubble(msg: ChatMessage): HTMLElement {
   const article = el('article', {
     class: msg.role === 'user' ? 'msg msg-user' : 'msg msg-tutor',
   });
   article.appendChild(el('div', { class: 'msg-content' }, msg.content));
   if (msg.role === 'assistant') {
-    article.appendChild(SpeakerButton(audioFor(msg)));
+    article.setAttribute('role', 'button');
+    article.tabIndex = 0;
+    on(article, 'click', () => {
+      if (!app.get().audio.enabled) return;
+      void audioFor(msg).play();
+    });
+    on(article, 'keydown', (event) => {
+      if ((event.key === 'Enter' || event.key === ' ') && app.get().audio.enabled) {
+        event.preventDefault();
+        void audioFor(msg).play();
+      }
+    });
   }
   return article;
-}
-
-function SpeakerButton(player: MessageAudio): HTMLButtonElement {
-  const btn = el('button', {
-    type: 'button',
-    className: 'msg-speaker',
-  }) as HTMLButtonElement;
-  function applyState(state: AudioState): void {
-    btn.dataset.audioState = state;
-    btn.setAttribute('aria-label', SPEAKER_LABELS[state]);
-    btn.innerHTML = SPEAKER_ICONS[state];
-    btn.disabled = state === 'loading';
-  }
-  player.onStateChange(applyState);
-  on(btn, 'click', () => {
-    if (player.getState() === 'playing') {
-      player.pause();
-    } else {
-      void player.play();
-    }
-  });
-  return btn;
 }
 
 // ---------------------------------------------------------------------------
@@ -245,15 +237,13 @@ function ChatComposer(): HTMLElement {
 }
 
 /**
- * Trigger auto-play on a freshly-arrived tutor reply. If the browser blocks
- * the call (no recent user gesture credit), the player surfaces an `error`
- * state on its speaker icon — the user can tap to retry, and that tap
- * grants the gesture credit so subsequent calls succeed.
+ * Auto-play a freshly-arrived tutor reply when audio is enabled. Browser
+ * autoplay policies may still block the call; `MessageAudio` swallows the
+ * failure (and logs to console.error) so the chat flow stays unaffected.
  */
 function maybeAutoplay(msg: ChatMessage): void {
-  if (!app.get().audio.autoplay) return;
-  const player = audioFor(msg);
-  void player.play();
+  if (!app.get().audio.enabled) return;
+  void audioFor(msg).play();
 }
 
 function explainSendError(err: unknown): string {
@@ -286,4 +276,3 @@ function refreshAfterChat(): void {
     }
   }, 800) as unknown as number;
 }
-
