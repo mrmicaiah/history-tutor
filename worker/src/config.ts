@@ -1,0 +1,54 @@
+/**
+ * Centralized constants for the Worker. Anything that might reasonably need
+ * to change without touching call sites lives here. Per the project rule
+ * against magic numbers, handlers and lib files import from this module
+ * rather than hardcoding.
+ */
+
+/** The single conversation row id. Stage 1 seeded `conversations(id=1)`. */
+export const CONVERSATION_ID = 1 as const;
+
+/** Anthropic model used for the tutor chat call. */
+export const CLAUDE_MODEL = 'claude-sonnet-4-5';
+
+/** Anthropic Messages API endpoint. */
+export const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
+
+/** `anthropic-version` header. Pinned per Anthropic's stability contract. */
+export const ANTHROPIC_VERSION = '2023-06-01';
+
+/** Wall-clock budget for an Anthropic call before we abort and surface 504. */
+export const ANTHROPIC_TIMEOUT_MS = 60_000;
+
+/** How many recent turns to load as context for each Claude call. */
+export const MAX_RECENT_TURNS = 20;
+
+/** Token budget for the tutor's reply. Enough room for ~200 words + slack. */
+export const MAX_OUTPUT_TOKENS_CHAT = 1024;
+
+/** Per-window limits used by `checkRateLimit`. */
+export const RATE_LIMIT_CHAT_PER_MIN = 30;
+export const RATE_LIMIT_CHAT_WINDOW_S = 60;
+export const RATE_LIMIT_PIN_PER_5MIN = 5;
+export const RATE_LIMIT_PIN_WINDOW_S = 300;
+
+/** Session cookie lifetime. 30 days * 24h * 60m * 60s * 1000ms. */
+export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Cookie name issued by the auth flow. */
+export const SESSION_COOKIE_NAME = 'htsess';
+
+/**
+ * CORS allowlist for the Pages frontend. Cross-origin requests from any
+ * origin not in this list receive no CORS headers (browsers will block them);
+ * direct, non-CORS requests (e.g. curl) are unaffected.
+ *
+ * The production Pages domain is finalized in Stage 5. Until then only
+ * `wrangler pages dev` (default port 8788) is whitelisted.
+ */
+export const CORS_ALLOWED_ORIGINS: ReadonlyArray<string> = [
+  'http://localhost:8788',
+];
+
+/** Max body size accepted on /api/chat (matches the Zod schema). */
+export const MAX_CHAT_MESSAGE_CHARS = 8000;

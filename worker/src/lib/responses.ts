@@ -1,30 +1,21 @@
 /**
  * JSON response helpers for the Worker.
  *
- * All Worker responses must use these helpers so that:
- *   - Content-Type is always `application/json; charset=utf-8`
- *   - CORS headers are set consistently
- *   - Error responses have a stable `{ error: <code>, message?: <human> }` shape
+ * Sets `Content-Type: application/json; charset=utf-8` and serializes the
+ * body. CORS headers are NOT applied here — the top-level dispatcher in
+ * `index.ts` adds origin-allowlisted CORS to every response after route
+ * handling, which keeps this helper agnostic to caller context (Set-Cookie,
+ * Retry-After, etc. all flow through unchanged).
  *
- * CORS is permissive in Stage 1 because the frontend does not exist yet.
- * Stage 2 will tighten it to the production Pages origin.
+ * Caller-supplied headers in `init.headers` override the defaults on a
+ * per-key basis.
  */
-
-const CORS_HEADERS: Readonly<Record<string, string>> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
 
 const BASE_HEADERS: Readonly<Record<string, string>> = {
   'Content-Type': 'application/json; charset=utf-8',
-  ...CORS_HEADERS,
 };
 
-/**
- * Serialize `data` as a JSON response. Caller-supplied headers in `init.headers`
- * override the defaults on a per-key basis.
- */
+/** Serialize `data` as a JSON Response. */
 export function json<T>(data: T, init: ResponseInit = {}): Response {
   const headers = new Headers(BASE_HEADERS);
   if (init.headers) {
@@ -41,9 +32,8 @@ export function json<T>(data: T, init: ResponseInit = {}): Response {
  * Build a structured error response.
  *
  * `code` is a stable machine-readable identifier (snake_case). `message` is an
- * optional human-readable description. NEVER pass raw exception messages here:
- * they may leak internal details. Log the exception server-side and return a
- * generic message instead.
+ * optional human-readable description. NEVER pass raw exception messages here
+ * — log them server-side and return a generic message instead.
  */
 export function errorResponse(
   status: number,

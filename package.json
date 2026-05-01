@@ -11,6 +11,9 @@
     "db:migrate:local": "wrangler d1 migrations apply history_tutor_db --local",
     "db:migrate:remote": "wrangler d1 migrations apply history_tutor_db --remote"
   },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250109.0",
     "@vitest/coverage-v8": "^2.1.8",

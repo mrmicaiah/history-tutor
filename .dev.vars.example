@@ -1,3 +1,15 @@
 # Local-only secrets for `wrangler dev`. Copy to `.dev.vars` and fill in.
-# Real production secrets are set via `wrangler secret put`, not this file.
-# No secrets needed in Stage 1.
+# Production secrets are set via `wrangler secret put`, NOT this file.
+#
+# All three values are required for the chat and auth routes to function.
+
+# SHA-256 hex digest of the user's PIN. Generate locally:
+#   echo -n "YOUR_PIN" | shasum -a 256 | awk '{print $1}'
+PIN_HASH=
+
+# 32 random hex bytes used to HMAC session cookies. Generate locally:
+#   openssl rand -hex 32
+SESSION_SECRET=
+
+# Anthropic API key (sk-ant-...). Get from https://console.anthropic.com.
+ANTHROPIC_API_KEY=
