@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MAX_CHAT_MESSAGE_CHARS } from './config';
+import { MAX_CHAT_MESSAGE_CHARS, TTS_MAX_TEXT_LENGTH } from './config';
 import { CARD_CATEGORIES } from './types/curriculum';
 
 /**
@@ -35,3 +35,9 @@ export const CardsQuerySchema = z.object({
   era: z.string().min(1).max(64).optional(),
 });
 export type CardsQuery = z.infer<typeof CardsQuerySchema>;
+
+/** POST /api/tts — text the tutor reply that should be voiced. */
+export const TtsRequestSchema = z.object({
+  text: z.string().min(1).max(TTS_MAX_TEXT_LENGTH),
+});
+export type TtsRequest = z.infer<typeof TtsRequestSchema>;

@@ -101,6 +101,30 @@ export interface AppState {
     turn_count: number;
     hydrated: boolean;
   };
+  audio: {
+    /** When true, every new tutor reply is auto-played. Persisted to localStorage. */
+    autoplay: boolean;
+  };
+}
+
+const AUTOPLAY_STORAGE_KEY = 'audio_autoplay';
+
+/** Read the auto-play preference from localStorage. Default true. Tolerant of privacy mode. */
+export function loadAutoplayPreference(): boolean {
+  try {
+    return localStorage.getItem(AUTOPLAY_STORAGE_KEY) !== 'false';
+  } catch {
+    return true;
+  }
+}
+
+/** Persist the auto-play preference. Silent on storage failure. */
+export function saveAutoplayPreference(value: boolean): void {
+  try {
+    localStorage.setItem(AUTOPLAY_STORAGE_KEY, String(value));
+  } catch {
+    /* storage unavailable; preference will reset on next reload */
+  }
 }
 
 export const app = new Store<AppState>({
@@ -124,5 +148,8 @@ export const app = new Store<AppState>({
     summary: { text: '', updated_at_ms: null },
     turn_count: 0,
     hydrated: false,
+  },
+  audio: {
+    autoplay: loadAutoplayPreference(),
   },
 });

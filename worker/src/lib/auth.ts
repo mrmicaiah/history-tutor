@@ -1,5 +1,6 @@
 import { AuthError } from './errors';
 import { log } from './logger';
+import { sha256Hex } from './hash';
 import { SESSION_COOKIE_NAME, SESSION_TTL_MS } from '../config';
 
 /**
@@ -47,14 +48,6 @@ function hexToBytes(hex: string): Uint8Array {
   return out;
 }
 
-function bytesToHex(bytes: Uint8Array): string {
-  let s = '';
-  for (let i = 0; i < bytes.length; i++) {
-    s += bytes[i]!.toString(16).padStart(2, '0');
-  }
-  return s;
-}
-
 /** Length-safe constant-time string comparison. */
 function constantTimeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -68,12 +61,6 @@ function constantTimeEqual(a: string, b: string): boolean {
 // ---------------------------------------------------------------------------
 // Crypto primitives
 // ---------------------------------------------------------------------------
-
-async function sha256Hex(input: string): Promise<string> {
-  const data = new TextEncoder().encode(input);
-  const digest = await crypto.subtle.digest('SHA-256', data);
-  return bytesToHex(new Uint8Array(digest));
-}
 
 async function hmacSha256(secretHex: string, message: string): Promise<string> {
   const keyBytes = hexToBytes(secretHex);

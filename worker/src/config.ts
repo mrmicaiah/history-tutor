@@ -111,3 +111,29 @@ export const MAX_CARDS_PER_MESSAGE = 5;
 
 /** Truncate per-card weak-area entries to this length. */
 export const MAX_WEAK_AREA_CHARS = 200;
+
+// ---------------------------------------------------------------------------
+// Voice output / ElevenLabs (Stage 6.1)
+// ---------------------------------------------------------------------------
+
+/** ElevenLabs streaming endpoint base. Voice id appended at call time. */
+export const ELEVENLABS_BASE_URL = 'https://api.elevenlabs.io';
+
+/** Streaming TTS model. `eleven_turbo_v2_5` is the lowest-latency choice. */
+export const ELEVENLABS_MODEL_ID = 'eleven_turbo_v2_5';
+
+/** Wall-clock budget for a TTS upstream call before we abort. */
+export const ELEVENLABS_TIMEOUT_MS = 60_000;
+
+/** Hard cap on text accepted by /api/tts. Prevents runaway audio cost. */
+export const TTS_MAX_TEXT_LENGTH = 2000;
+
+/** Per-window rate limit for /api/tts. 20/min is generous for one user. */
+export const RATE_LIMIT_TTS_PER_MIN = 20;
+export const RATE_LIMIT_TTS_WINDOW_S = 60;
+
+/** Cache key version segment — bump if audio format / params change. */
+export const TTS_CACHE_VERSION = 'v1';
+
+/** TTS response Cache-Control header value. */
+export const TTS_CLIENT_CACHE_HEADER = 'private, max-age=86400';

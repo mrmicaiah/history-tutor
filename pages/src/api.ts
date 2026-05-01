@@ -76,6 +76,39 @@ function qs<T extends object>(params: T): string {
   return s.length > 0 ? `?${s}` : '';
 }
 
+/**
+ * POST that returns a binary blob (used by /api/tts). Maps non-2xx to
+ * `ApiError` with whatever JSON error envelope the Worker returned.
+ */
+async function postBlob(path: string, body: object): Promise<Blob> {
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new ApiError(0, 'network', null);
+  }
+  if (!response.ok) {
+    let errBody: unknown = null;
+    try {
+      errBody = await response.json();
+    } catch {
+      /* non-JSON error body */
+    }
+    const code =
+      errBody && typeof errBody === 'object' && 'error' in errBody &&
+      typeof (errBody as { error: unknown }).error === 'string'
+        ? (errBody as { error: string }).error
+        : 'unknown';
+    throw new ApiError(response.status, code, errBody);
+  }
+  return response.blob();
+}
+
 // ---------------------------------------------------------------------------
 // Response shapes
 // ---------------------------------------------------------------------------
@@ -130,4 +163,5 @@ export const api = {
     get<CardsResponse>(`/api/cards${qs(params)}`),
   updateCardMastery: (id: number, mastery: number) =>
     patch<CardPatchResponse>(`/api/cards/${id}`, { mastery }),
+  ttsAudio: (text: string) => postBlob('/api/tts', { text }),
 };

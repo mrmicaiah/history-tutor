@@ -32,9 +32,12 @@ export default defineConfig(async () => {
           bindings: {
             TEST_MIGRATIONS: migrations,
             ANTHROPIC_API_KEY: 'test-anthropic-key',
+            ELEVENLABS_API_KEY: 'test-elevenlabs-key',
+            ELEVENLABS_VOICE_ID: 'test-voice-id',
             PIN_HASH: '0'.repeat(64),
             SESSION_SECRET: '0'.repeat(64),
           },
+          r2Buckets: ['AUDIO_CACHE'],
         },
       }),
     ],

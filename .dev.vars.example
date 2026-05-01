@@ -1,7 +1,9 @@
 # Local-only secrets for `wrangler dev`. Copy to `.dev.vars` and fill in.
 # Production secrets are set via `wrangler secret put`, NOT this file.
 #
-# All three values are required for the chat and auth routes to function.
+# All five values are required for full functionality. The auth and chat
+# routes require the first three; voice output (Stage 6.1) requires the
+# last two.
 
 # SHA-256 hex digest of the user's PIN. Generate locally:
 #   echo -n "YOUR_PIN" | shasum -a 256 | awk '{print $1}'
@@ -13,3 +15,9 @@ SESSION_SECRET=
 
 # Anthropic API key (sk-ant-...). Get from https://console.anthropic.com.
 ANTHROPIC_API_KEY=
+
+# ElevenLabs account API key. Get from https://elevenlabs.io/app/settings/api-keys.
+ELEVENLABS_API_KEY=
+
+# ElevenLabs voice id. Stage 6.1 default:
+ELEVENLABS_VOICE_ID=qSeXEcewz7tA0Q0qk9fH

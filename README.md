@@ -77,6 +77,30 @@ wrangler secret put ANTHROPIC_API_KEY
 
 For local dev, place the same three values in `.dev.vars` (gitignored).
 
+### 3. Voice output (Stage 6.1)
+
+Tutor replies are spoken via ElevenLabs, with a per-text R2 cache so
+repeated phrases don't re-bill. Two new secrets and one new R2 bucket:
+
+```sh
+# Create the audio cache bucket once
+npx wrangler r2 bucket create history-tutor-audio
+
+# ElevenLabs API key — https://elevenlabs.io/app/settings/api-keys
+npx wrangler secret put ELEVENLABS_API_KEY
+
+# Voice id (Stage 6.1 default)
+npx wrangler secret put ELEVENLABS_VOICE_ID
+# paste: qSeXEcewz7tA0Q0qk9fH
+
+npm run deploy
+```
+
+For local dev, add `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` to
+`.dev.vars` (the example file lists them). `wrangler dev --local` provides
+an in-memory R2 replacement, so the bucket doesn't need to exist for
+local testing.
+
 ## Deployment
 
 ```sh
@@ -100,6 +124,7 @@ or `wrangler pages deploy pages/public`. Stage 1 ships only a placeholder.
 |     4 | Real tutor prompt + evaluation pass + cards         |   ✓    |
 |     5 | Frontend (PIN, chat, cards, map; PATCH cards)       |   ✓    |
 |   5.1 | Pages Function proxy → same-origin deployment       |   ✓    |
+|   6.1 | Voice output (ElevenLabs TTS + R2 cache + autoplay) |   ✓    |
 
 ## API surface
 
@@ -112,6 +137,7 @@ or `wrangler pages deploy pages/public`. Stage 1 ships only a placeholder.
 |    GET | `/api/state`       | Returns `{map, summary, turn_count, recent_turns}`. Auth required.             |
 |    GET | `/api/cards`       | Paginated reference cards. Query: `sort`/`limit`/`offset`/`category`/`era`.    |
 |  PATCH | `/api/cards/:id`   | Body `{mastery: 0..5}` → `{card}`. Auth required. Increments times_reviewed.   |
+|   POST | `/api/tts`         | Body `{text}` → audio/mpeg. Auth required. R2-cached, 20/min.                  |
 
 ## Frontend (Stage 5)
 

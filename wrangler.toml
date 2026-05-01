@@ -18,6 +18,18 @@ database_name = "history_tutor_db"
 database_id = "7b50aeca-99e3-4203-888f-12e9804b2490"
 migrations_dir = "worker/migrations"
 
+# R2 bucket for cached ElevenLabs audio (Stage 6.1).
+#
+# Create the bucket once before the first deploy:
+#   npx wrangler r2 bucket create history-tutor-audio
+#
+# `wrangler dev --local` provides an in-memory R2 replacement, so local dev
+# works without the bucket existing. The deploy will fail if the bucket
+# isn't created in your account.
+[[r2_buckets]]
+binding = "AUDIO_CACHE"
+bucket_name = "history-tutor-audio"
+
 # Frontend deployment configuration.
 #
 # `ALLOWED_ORIGIN` is the Pages origin used for direct browser access to

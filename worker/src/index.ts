@@ -8,6 +8,7 @@ import { handleAuthPin, handleAuthStatus } from './routes/auth';
 import { handleChat } from './routes/chat';
 import { handleState } from './routes/state';
 import { handleCardPatch, handleCards } from './routes/cards';
+import { handleTts } from './routes/tts';
 
 /**
  * Worker entrypoint.
@@ -30,7 +31,8 @@ const router = new Router()
   .add('POST', '/api/chat', handleChat)
   .add('GET', '/api/state', handleState)
   .add('GET', '/api/cards', handleCards)
-  .add('PATCH', '/api/cards/:id', handleCardPatch);
+  .add('PATCH', '/api/cards/:id', handleCardPatch)
+  .add('POST', '/api/tts', handleTts);
 
 /**
  * Build the CORS allowlist. `http://localhost:8788` is always included so
