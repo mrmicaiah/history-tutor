@@ -1,0 +1,19 @@
+name = "history-tutor"
+main = "worker/src/index.ts"
+compatibility_date = "2026-04-30"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 database binding.
+#
+# Before this Worker can deploy or run locally, you must:
+#   1. Create the database:    wrangler d1 create history_tutor_db
+#   2. Copy the printed `database_id` value into the field below.
+#   3. Apply migrations remote: npm run db:migrate:remote
+#      (or local for `wrangler dev`: npm run db:migrate:local)
+#
+# Until step 2 is done, `wrangler deploy` will fail. That is expected.
+[[d1_databases]]
+binding = "DB"
+database_name = "history_tutor_db"
+database_id = "REPLACE_WITH_ACTUAL_ID"
+migrations_dir = "worker/migrations"
