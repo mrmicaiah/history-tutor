@@ -125,6 +125,7 @@ or `wrangler pages deploy pages/public`. Stage 1 ships only a placeholder.
 |     5 | Frontend (PIN, chat, cards, map; PATCH cards)       |   ✓    |
 |   5.1 | Pages Function proxy → same-origin deployment       |   ✓    |
 |   6.1 | Voice output (ElevenLabs TTS + R2 cache + autoplay) |   ✓    |
+|   6.2 | Personal touches (Kayla's name + welcome / thinking)|   ✓    |
 
 ## API surface
 

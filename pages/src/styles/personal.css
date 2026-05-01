@@ -1,0 +1,42 @@
+/*
+ * personal.css — Stage 6.2.
+ *
+ * Visual treatment for the personal messages threaded into the app
+ * (welcome on the PIN gate, rotating thinking indicator in chat). Italic
+ * serif. Generous line height. Slightly relaxed letter-spacing. The point
+ * is that these don't read like UI affordances.
+ *
+ * Build script concatenates CSS files alphabetically; this file lands
+ * last so its rules override the per-surface chrome where they overlap.
+ */
+
+.personal-message {
+  font-family: var(--font-serif);
+  font-style: italic;
+  line-height: 1.45;
+  letter-spacing: 0.005em;
+  color: var(--ink);
+}
+
+/* PIN gate: prominent, centered, replaces the utilitarian subtitle. */
+.welcome-message {
+  font-size: 1.5rem;
+  text-align: center;
+  max-width: 28ch;
+  margin: 0 auto;
+  color: var(--ink);
+}
+@media (min-width: 720px) {
+  .welcome-message { font-size: 1.625rem; max-width: 34ch; }
+}
+
+/* Chat: appears in the message stream while the tutor is composing. */
+.thinking-message {
+  align-self: flex-start;
+  max-width: 92%;
+  font-size: 1rem;
+  color: var(--ink-soft);
+  padding: 4px 0;
+  /* Stage 6.2: 300ms ease-out fade between rotated messages. */
+  transition: opacity 300ms ease-out;
+}

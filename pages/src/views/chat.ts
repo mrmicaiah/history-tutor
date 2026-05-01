@@ -13,6 +13,7 @@ import {
   SPEAKER_ICONS,
   SPEAKER_LABELS,
 } from '../components/audio-icons';
+import { startThinkingRotation } from '../components/thinking-rotation';
 
 /**
  * Chat view: scrollable transcript on top, sticky composer at bottom, and
@@ -48,8 +49,23 @@ export function ChatView(): HTMLElement {
   const composer = ChatComposer();
   view.append(header, messagesEl, composer);
 
+  // Stable thinking element. Owned by the view closure so the rotation
+  // timer survives across `renderMessages` calls (which clear messagesEl
+  // and re-append children). Created on `sending=true`, destroyed on
+  // `sending=false`. `renderMessages` re-appends it each render.
+  let thinkingEl: HTMLElement | null = null;
+  let thinkingCleanup: (() => void) | null = null;
+
   subscribeSlice(app, (s) => s.chat, (chat) => {
-    renderMessages(messagesEl, chat.messages, chat.sending, chat.error);
+    if (chat.sending && thinkingEl === null) {
+      thinkingEl = el('div', { class: 'chat-thinking thinking-message personal-message' });
+      thinkingCleanup = startThinkingRotation(thinkingEl);
+    } else if (!chat.sending && thinkingEl !== null) {
+      thinkingCleanup?.();
+      thinkingCleanup = null;
+      thinkingEl = null;
+    }
+    renderMessages(messagesEl, chat.messages, chat.error, thinkingEl);
     requestAnimationFrame(() => {
       messagesEl.scrollTop = messagesEl.scrollHeight;
     });
@@ -101,11 +117,11 @@ function AutoplayToggle(): HTMLButtonElement {
 function renderMessages(
   container: HTMLElement,
   messages: ChatMessage[],
-  sending: boolean,
   error: string | null,
+  thinkingEl: HTMLElement | null,
 ): void {
   clearChildren(container);
-  if (messages.length === 0 && !sending) {
+  if (messages.length === 0 && thinkingEl === null) {
     container.appendChild(
       el('div', { class: 'chat-empty' },
         el('p', null,
@@ -118,13 +134,14 @@ function renderMessages(
   for (const msg of messages) {
     container.appendChild(MessageBubble(msg));
   }
-  if (sending) {
-    container.appendChild(el('div', { class: 'chat-thinking' }, 'Thinking…'));
+  if (thinkingEl !== null) {
+    container.appendChild(thinkingEl);
   }
   if (error !== null) {
     container.appendChild(el('div', { class: 'chat-error' }, error));
   }
 }
+
 
 function MessageBubble(msg: ChatMessage): HTMLElement {
   const article = el('article', {

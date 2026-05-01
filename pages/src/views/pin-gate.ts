@@ -1,16 +1,21 @@
 import { app } from '../state';
 import { api, ApiError } from '../api';
 import { clearChildren, el, on } from '../lib/dom';
+import { WELCOME_MESSAGES } from '../data/messages';
 
 /**
  * PIN gate view. Single-column, focused entry. Shows server-side errors
  * (wrong PIN, rate limit) inline. On success, flips `state.authenticated`
  * — `main.ts` re-renders to AppShell.
+ *
+ * Above the input, one randomly-selected welcome message from
+ * `data/messages.ts` is displayed in italic serif. Picked once per mount.
+ * Reload to roll a new one.
  */
 export function PinGateView(): HTMLElement {
   const container = el('section', { class: 'view pin-gate active' });
   const title = el('h1', { class: 'app-title' }, 'history-tutor');
-  const subtitle = el('p', { class: 'pin-subtitle' }, 'Enter your PIN to start a session.');
+  const subtitle = el('p', { class: 'welcome-message personal-message' }, pickWelcomeMessage());
 
   const form = el('form', { class: 'pin-form' });
   const input = el('input', {
@@ -70,4 +75,14 @@ function retryAfterSeconds(body: unknown): number | null {
     if (typeof v === 'number') return v;
   }
   return null;
+}
+
+/**
+ * Pick one welcome message at random. Defensive fallback for the (impossible)
+ * empty-pool case so the gate still has *some* line of copy above the input.
+ */
+function pickWelcomeMessage(): string {
+  if (WELCOME_MESSAGES.length === 0) return 'Welcome back.';
+  const idx = Math.floor(Math.random() * WELCOME_MESSAGES.length);
+  return WELCOME_MESSAGES[idx]!;
 }
