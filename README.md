@@ -128,6 +128,7 @@ or `wrangler pages deploy pages/public`. Stage 1 ships only a placeholder.
 |   6.2 | Personal touches (Kayla's name + welcome / thinking)|   ✓    |
 |   6.3 | Audio UX: single header toggle + tap-to-replay      |   ✓    |
 |   6.4 | Replay hint label in chat header                    |   ✓    |
+|   6.5 | Tutor knows Kayla's interests (Hamilton, anime, etc.)|   ✓    |
 
 ## API surface
 
