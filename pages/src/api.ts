@@ -5,31 +5,18 @@ import type { SortMode } from './state';
 /**
  * Worker API client.
  *
- * Every request uses `credentials: 'include'` so the session cookie travels.
- * `API_BASE` resolution order:
- *   1. `window.API_BASE` if defined (set in index.html for production).
- *   2. `http://localhost:8787` when on localhost (matches `wrangler dev`).
- *   3. Empty string (same-origin) — for setups proxying /api through Pages.
+ * Same-origin only: all requests go to relative `/api/*` paths. In
+ * production, those are served by the Pages Function proxy at
+ * `pages/functions/api/[[path]].ts`, which forwards to the Worker. In
+ * local dev, `wrangler pages dev` runs the same proxy with the
+ * `WORKER_URL` binding pointing at `http://localhost:8787`.
+ *
+ * `credentials: 'include'` is preserved so the session cookie travels;
+ * for same-origin requests this is the default but explicit is clearer.
  *
  * Errors are thrown as `ApiError`. Network failures use `status: 0`.
  * Views catch and render error.status / error.code / error.body.
  */
-
-declare global {
-  interface Window {
-    API_BASE?: string;
-  }
-}
-
-const API_BASE: string = (() => {
-  if (typeof window !== 'undefined' && typeof window.API_BASE === 'string') {
-    return window.API_BASE;
-  }
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    return 'http://localhost:8787';
-  }
-  return '';
-})();
 
 export class ApiError extends Error {
   readonly status: number;
@@ -46,7 +33,7 @@ export class ApiError extends Error {
 async function request<T>(path: string, init: RequestInit): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(API_BASE + path, { ...init, credentials: 'include' });
+    response = await fetch(path, { ...init, credentials: 'include' });
   } catch {
     throw new ApiError(0, 'network', null);
   }

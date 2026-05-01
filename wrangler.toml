@@ -18,16 +18,20 @@ database_name = "history_tutor_db"
 database_id = "7b50aeca-99e3-4203-888f-12e9804b2490"
 migrations_dir = "worker/migrations"
 
-# Stage 5 frontend configuration. Both are optional; leaving them unset
-# keeps `wrangler dev` working out-of-box (CORS allowlist falls back to
-# `http://localhost:8788` and the session cookie is host-only).
+# Frontend deployment configuration.
 #
-# In production, uncomment and set these to the exact origins / domain you
-# configured in the Cloudflare dashboard. The cookie domain must be a parent
-# of both the Pages and Worker hostnames so the session cookie is readable
-# from both — typically a leading-dot registered domain like
-# `.tutor.example.com` covering `tutor.example.com` and `api.tutor.example.com`.
+# `ALLOWED_ORIGIN` is the Pages origin used for direct browser access to
+# the Worker (rare — most production traffic flows through the Pages
+# Function proxy at `pages/functions/api/[[path]].ts`, which is server-
+# to-server and not subject to CORS). `http://localhost:8788` is always
+# kept in the allowlist as a fallback for local debugging.
 #
-# [vars]
-# ALLOWED_ORIGIN = "https://tutor.example.com"
-# COOKIE_DOMAIN = ".tutor.example.com"
+# `COOKIE_DOMAIN` is unused with the Pages Function proxy: the proxy
+# returns the Worker's `Set-Cookie` to the browser as if it came from
+# the Pages origin, so a host-only cookie is correct. Uncomment only
+# when deploying with a custom domain pair (e.g. `tutor.example.com` +
+# `api.tutor.example.com`) and set it to the shared parent.
+
+[vars]
+ALLOWED_ORIGIN = "https://history-tutor.pages.dev"
+# COOKIE_DOMAIN = ".your-domain.com"

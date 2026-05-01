@@ -32,11 +32,19 @@ const router = new Router()
   .add('GET', '/api/cards', handleCards)
   .add('PATCH', '/api/cards/:id', handleCardPatch);
 
+/**
+ * Build the CORS allowlist. `http://localhost:8788` is always included so
+ * an operator who sets `ALLOWED_ORIGIN` in `wrangler.toml` doesn't break
+ * direct local browser→Worker access while debugging. Production
+ * non-proxy access still works because `ALLOWED_ORIGIN` is also in the
+ * list; production proxy access is server-to-server and bypasses CORS.
+ */
 function getAllowedOrigins(env: Env): ReadonlyArray<string> {
+  const list = [...CORS_ALLOWED_ORIGINS];
   if (env.ALLOWED_ORIGIN !== undefined && env.ALLOWED_ORIGIN.length > 0) {
-    return [env.ALLOWED_ORIGIN];
+    list.unshift(env.ALLOWED_ORIGIN);
   }
-  return CORS_ALLOWED_ORIGINS;
+  return list;
 }
 
 function buildCorsHeaders(

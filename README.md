@@ -99,6 +99,7 @@ or `wrangler pages deploy pages/public`. Stage 1 ships only a placeholder.
 |     3 | Knowledge map + summary + compaction (memory layer) |   ✓    |
 |     4 | Real tutor prompt + evaluation pass + cards         |   ✓    |
 |     5 | Frontend (PIN, chat, cards, map; PATCH cards)       |   ✓    |
+|   5.1 | Pages Function proxy → same-origin deployment       |   ✓    |
 
 ## API surface
 
@@ -124,39 +125,54 @@ npm run dev
 
 # 2. In another terminal, build + serve the static frontend on :8788
 npm run build:pages   # one-shot build
-npm run dev:pages     # `wrangler pages dev pages/public --port 8788`
+npm run dev:pages     # `wrangler pages dev pages/public` with WORKER_URL bound to localhost:8787
 
 # Optional 3. Auto-rebuild on save
 npm run watch:pages
 ```
 
-Both servers are same-site (`localhost`), so the SameSite=Lax session cookie
-flows across ports. The frontend auto-detects `localhost` and targets
-`http://localhost:8787` for API calls.
+The frontend talks to `/api/*` only. `wrangler pages dev` discovers the
+catch-all proxy at `functions/api/[[path]].ts` and forwards every API call
+to the local Worker, so the browser sees a single origin (`localhost:8788`)
+and the session cookie flows naturally without CORS or domain config.
 
-### Production deployment
+Smoke-test the proxy:
 
-1. **Pick two custom subdomains** under one registered domain. Example:
-   - Pages: `tutor.example.com`
-   - Worker: `api.tutor.example.com`
-2. **Configure them in the Cloudflare dashboard** (Pages → Custom domains;
-   Workers → Triggers → Custom domains).
-3. **Set the Worker `[vars]`** in `wrangler.toml` (uncomment the block):
-   ```toml
-   [vars]
-   ALLOWED_ORIGIN = "https://tutor.example.com"
-   COOKIE_DOMAIN = ".tutor.example.com"
-   ```
-4. **Set `window.API_BASE`** in `pages/public/index.html`:
-   ```html
-   <script>window.API_BASE = 'https://api.tutor.example.com';</script>
-   ```
-5. **Cloudflare Pages build settings** (dashboard → Project → Settings → Build):
+```sh
+curl --compressed http://localhost:8788/api/health
+# => {"ok":true,"version":"stage-2","db":"connected"}
+```
+
+### Production deployment (same-origin via Pages Function proxy)
+
+This is the path used when the Worker lives at `*.workers.dev` and Pages at
+`*.pages.dev` — no custom domain needed. The Pages Function at
+`functions/api/[[path]].ts` makes everything same-origin.
+
+1. **Deploy the Worker** (`npm run deploy`). Note the printed URL, e.g.
+   `https://history-tutor.<your-subdomain>.workers.dev`.
+2. **Connect the repo to Cloudflare Pages** (dashboard → Workers & Pages →
+   Create → Pages → Connect to Git). Build settings:
    - Build command: `npm install && npm run build:pages`
    - Build output directory: `pages/public`
    - Root directory: leave blank
-6. **Deploy**: `npm run deploy` (Worker) and push to the Pages-connected
-   git branch (frontend).
+   - Production branch: `main`
+3. **Set the `WORKER_URL` Pages env var** (Pages project → Settings →
+   Environment variables → Production):
+   - `WORKER_URL = https://history-tutor.<your-subdomain>.workers.dev`
+   (no trailing slash, no quotes)
+4. **(Optional) Update `ALLOWED_ORIGIN`** in `wrangler.toml`'s `[vars]`
+   block to match your Pages URL if it differs from the default
+   `https://history-tutor.pages.dev`. This only matters for direct
+   browser→Worker access; the proxy is server-to-server and bypasses CORS.
+5. **First Pages deploy** triggers automatically on the next push to `main`.
+6. **Verify**: open the Pages URL, enter your PIN, send a message.
+
+If you'd rather use a custom-domain pair (e.g. `tutor.example.com` +
+`api.tutor.example.com`) instead of the proxy, set both `ALLOWED_ORIGIN`
+and `COOKIE_DOMAIN` in `wrangler.toml`'s `[vars]` block; the cookie's
+`Domain=.your-domain.com` makes it work cross-subdomain. The proxy is
+unused in that case.
 
 ## Repository layout
 
@@ -168,6 +184,8 @@ history-tutor/
 ├── pages/
 │   ├── public/               # Static assets served by Pages
 │   └── src/                  # Frontend TS (Stage 5)
+├── functions/                # Pages Functions (same-origin /api/* proxy)
+│   └── api/[[path]].ts       # Catch-all proxy → WORKER_URL
 ├── wrangler.toml             # Worker + bindings config
 ├── tsconfig.base.json        # Shared TS config (strict)
 ├── vitest.config.ts          # Test runner config
