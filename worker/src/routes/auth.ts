@@ -52,7 +52,7 @@ export async function handleAuthPin(req: Request, env: Env): Promise<Response> {
     return json({ error: 'auth_failed' }, { status: 401 });
   }
 
-  const cookie = await createSessionCookie(env.SESSION_SECRET);
+  const cookie = await createSessionCookie(env.SESSION_SECRET, env.COOKIE_DOMAIN);
   log.info('auth_pin_success', { ip });
   return json({ ok: true }, { headers: { 'Set-Cookie': cookie } });
 }

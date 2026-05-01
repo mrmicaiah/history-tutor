@@ -98,7 +98,7 @@ or `wrangler pages deploy pages/public`. Stage 1 ships only a placeholder.
 |     2 | Chat route, PIN gate, Claude integration, logging   |   ✓    |
 |     3 | Knowledge map + summary + compaction (memory layer) |   ✓    |
 |     4 | Real tutor prompt + evaluation pass + cards         |   ✓    |
-|     5 | Frontend                                            |   —    |
+|     5 | Frontend (PIN, chat, cards, map; PATCH cards)       |   ✓    |
 
 ## API surface
 
@@ -108,8 +108,55 @@ or `wrangler pages deploy pages/public`. Stage 1 ships only a placeholder.
 |   POST | `/api/auth/pin`    | Body `{pin}`; on success sets `htsess` cookie. 5/5min per IP.                  |
 |    GET | `/api/auth/status` | Returns `{authenticated: bool}`. Public.                                       |
 |   POST | `/api/chat`        | Body `{message}` → `{reply}`. Auth required. 30/min. Triggers eval+compaction. |
-|    GET | `/api/state`       | Returns `{map, summary, turn_count}`. Auth required.                           |
+|    GET | `/api/state`       | Returns `{map, summary, turn_count, recent_turns}`. Auth required.             |
 |    GET | `/api/cards`       | Paginated reference cards. Query: `sort`/`limit`/`offset`/`category`/`era`.    |
+|  PATCH | `/api/cards/:id`   | Body `{mastery: 0..5}` → `{card}`. Auth required. Increments times_reviewed.   |
+
+## Frontend (Stage 5)
+
+The frontend is vanilla TypeScript bundled with esbuild. No framework.
+
+### Local development (two processes)
+
+```sh
+# 1. Worker on :8787
+npm run dev
+
+# 2. In another terminal, build + serve the static frontend on :8788
+npm run build:pages   # one-shot build
+npm run dev:pages     # `wrangler pages dev pages/public --port 8788`
+
+# Optional 3. Auto-rebuild on save
+npm run watch:pages
+```
+
+Both servers are same-site (`localhost`), so the SameSite=Lax session cookie
+flows across ports. The frontend auto-detects `localhost` and targets
+`http://localhost:8787` for API calls.
+
+### Production deployment
+
+1. **Pick two custom subdomains** under one registered domain. Example:
+   - Pages: `tutor.example.com`
+   - Worker: `api.tutor.example.com`
+2. **Configure them in the Cloudflare dashboard** (Pages → Custom domains;
+   Workers → Triggers → Custom domains).
+3. **Set the Worker `[vars]`** in `wrangler.toml` (uncomment the block):
+   ```toml
+   [vars]
+   ALLOWED_ORIGIN = "https://tutor.example.com"
+   COOKIE_DOMAIN = ".tutor.example.com"
+   ```
+4. **Set `window.API_BASE`** in `pages/public/index.html`:
+   ```html
+   <script>window.API_BASE = 'https://api.tutor.example.com';</script>
+   ```
+5. **Cloudflare Pages build settings** (dashboard → Project → Settings → Build):
+   - Build command: `npm install && npm run build:pages`
+   - Build output directory: `pages/public`
+   - Root directory: leave blank
+6. **Deploy**: `npm run deploy` (Worker) and push to the Pages-connected
+   git branch (frontend).
 
 ## Repository layout
 

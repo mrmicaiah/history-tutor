@@ -1,0 +1,126 @@
+/* cards.css — sortable list with tap-to-reveal and mastery controls. */
+
+.cards-view {
+  flex: 1;
+  display: none;
+  flex-direction: column;
+  min-height: 0;
+}
+.cards-view.active { display: flex; }
+
+.cards-controls {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--font-sans);
+}
+.sort-label {
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.sort-select {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  padding: 8px 12px;
+}
+
+.cards-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--rule);
+  -webkit-overflow-scrolling: touch;
+}
+
+.cards-empty {
+  margin: auto;
+  max-width: 380px;
+  text-align: center;
+  color: var(--ink-soft);
+  font-style: italic;
+  padding: 24px;
+  display: none;
+}
+
+.card-row {
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 16px 20px;
+  cursor: pointer;
+}
+.card-row.expanded .card-head { padding-bottom: 12px; }
+
+.card-term {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 500;
+}
+.card-tag {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
+
+.card-body {
+  display: none;
+  padding: 0 20px 18px;
+  gap: 12px;
+  flex-direction: column;
+}
+.card-row.expanded .card-body { display: flex; }
+
+.card-def {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.card-meta {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--ink-faint);
+  text-transform: lowercase;
+}
+
+.mastery-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mastery-btn {
+  flex: 1 1 auto;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--raise);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  transition: background 150ms ease-out, border-color 150ms ease-out;
+}
+.mastery-btn:hover { border-color: var(--ink-faint); }
+.mastery-btn:disabled { opacity: 0.5; cursor: wait; }
+.mastery-error {
+  flex: 1 1 100%;
+  color: var(--warn);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  padding: 6px 0;
+}

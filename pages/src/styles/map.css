@@ -1,0 +1,102 @@
+/* map.css — competence cells + diagnostic notes + weak areas. */
+
+.map-view {
+  flex: 1;
+  display: none;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+.map-view.active { display: flex; }
+
+.map-loading {
+  margin: auto;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.map-section {
+  padding: 20px;
+  border-bottom: 1px solid var(--rule);
+}
+.map-section:last-of-type { border-bottom: none; }
+
+.map-section-title {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  margin-bottom: 12px;
+}
+
+.map-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+@media (min-width: 720px) {
+  .map-eras .map-grid { grid-template-columns: repeat(9, 1fr); }
+  .map-themes .map-grid { grid-template-columns: repeat(6, 1fr); }
+}
+
+.map-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--rule);
+  background: var(--raise);
+  font-family: var(--font-sans);
+  min-height: 64px;
+}
+.map-cell-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.map-cell-value {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
+.map-cell-untested  { background: var(--raise); }
+.map-cell-shaky     { background: #fff0e8; border-color: #f3c8b3; }
+.map-cell-shaky .map-cell-value { color: #b46b3f; }
+.map-cell-familiar  { background: #f1ecdc; border-color: #d8c89a; }
+.map-cell-familiar .map-cell-value { color: #8b6e1c; }
+.map-cell-solid     { background: #ddead8; border-color: #99c08e; }
+.map-cell-solid .map-cell-value { color: var(--ok); }
+
+.map-notes .map-note {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+.map-notes .map-note:last-child { margin-bottom: 0; }
+
+.map-empty {
+  font-style: italic;
+  color: var(--ink-faint);
+}
+
+.map-weak-list {
+  list-style: disc inside;
+  font-family: var(--font-serif);
+  font-size: 16px;
+  line-height: 1.55;
+}
+.map-weak-list li { margin-bottom: 4px; }
+
+.map-footer {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--ink-faint);
+  padding: 16px 20px;
+  border-top: 1px solid var(--rule);
+}

@@ -15,5 +15,19 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "history_tutor_db"
-database_id = "REPLACE_WITH_ACTUAL_ID"
+database_id = "7b50aeca-99e3-4203-888f-12e9804b2490"
 migrations_dir = "worker/migrations"
+
+# Stage 5 frontend configuration. Both are optional; leaving them unset
+# keeps `wrangler dev` working out-of-box (CORS allowlist falls back to
+# `http://localhost:8788` and the session cookie is host-only).
+#
+# In production, uncomment and set these to the exact origins / domain you
+# configured in the Cloudflare dashboard. The cookie domain must be a parent
+# of both the Pages and Worker hostnames so the session cookie is readable
+# from both — typically a leading-dot registered domain like
+# `.tutor.example.com` covering `tutor.example.com` and `api.tutor.example.com`.
+#
+# [vars]
+# ALLOWED_ORIGIN = "https://tutor.example.com"
+# COOKIE_DOMAIN = ".tutor.example.com"

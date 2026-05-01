@@ -104,16 +104,30 @@ export async function verifyPin(pin: string, expectedHashHex: string): Promise<b
 
 /**
  * Build a `Set-Cookie` header value carrying a signed session.
+ *
  * Payload is JSON `{ exp: <ms-since-epoch> }`; signature is HMAC-SHA256 of
  * the base64url-encoded payload using `SESSION_SECRET`.
+ *
+ * `cookieDomain` is appended as `Domain=<value>` when set — required when
+ * the Pages frontend and the Worker live on different subdomains of the
+ * same registered domain (e.g. `tutor.example.com` + `api.tutor.example.com`
+ * with `Domain=.tutor.example.com`). When unset, no `Domain=` attribute is
+ * emitted (host-only cookie, the right default for `*.workers.dev`).
  */
-export async function createSessionCookie(secretHex: string, nowMs = Date.now()): Promise<string> {
+export async function createSessionCookie(
+  secretHex: string,
+  cookieDomain?: string,
+  nowMs = Date.now(),
+): Promise<string> {
   const payloadJson = JSON.stringify({ exp: nowMs + SESSION_TTL_MS });
   const payloadB64 = bytesToBase64Url(new TextEncoder().encode(payloadJson));
   const sig = await hmacSha256(secretHex, payloadB64);
   const value = `${payloadB64}.${sig}`;
   const maxAgeSeconds = Math.floor(SESSION_TTL_MS / 1000);
-  return `${SESSION_COOKIE_NAME}=${value}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${maxAgeSeconds}`;
+  const domainAttr = cookieDomain !== undefined && cookieDomain.length > 0
+    ? `; Domain=${cookieDomain}`
+    : '';
+  return `${SESSION_COOKIE_NAME}=${value}; HttpOnly; Secure; SameSite=Lax; Path=/${domainAttr}; Max-Age=${maxAgeSeconds}`;
 }
 
 /**

@@ -1,0 +1,107 @@
+/* chat.css — transcript + composer. Tutor messages are the focus typography. */
+
+.chat-view {
+  flex: 1;
+  display: none;
+  flex-direction: column;
+  min-height: 0;
+}
+.chat-view.active { display: flex; }
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 20px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 92%;
+}
+.msg-tutor { align-self: flex-start; }
+.msg-user  { align-self: flex-end;   }
+
+.msg-content {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.msg-tutor .msg-content {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.msg-user .msg-content {
+  font-family: var(--font-serif);
+  background: var(--user-bubble);
+  padding: 10px 14px;
+  border-radius: 12px 12px 4px 12px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.chat-empty {
+  margin: auto;
+  max-width: 380px;
+  text-align: center;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+.chat-thinking {
+  align-self: flex-start;
+  font-style: italic;
+  color: var(--ink-faint);
+  padding: 6px 0;
+}
+
+.chat-error {
+  align-self: stretch;
+  background: #fff2ee;
+  border: 1px solid #f1c5b8;
+  color: var(--warn);
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+
+.chat-composer {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px 14px;
+  border-top: 1px solid var(--rule);
+  background: var(--paper);
+}
+.chat-input {
+  flex: 1;
+  resize: none;
+  min-height: 44px;
+  max-height: 144px;
+  padding: 11px 14px;
+  font-family: var(--font-serif);
+  font-size: 16px;
+  line-height: 1.5;
+}
+.chat-send {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-radius: var(--radius);
+  padding: 0 18px;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  align-self: flex-end;
+  height: 44px;
+  transition: background 150ms ease-out;
+}
+.chat-send:hover { background: var(--accent-hover); }
+.chat-send:disabled { opacity: 0.5; cursor: wait; }

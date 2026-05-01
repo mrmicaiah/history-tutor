@@ -1,25 +1,23 @@
-import { z } from 'zod';
 import type { Env } from '../env';
-import { json } from '../lib/responses';
+import { json, errorResponse } from '../lib/responses';
 import { ValidationError } from '../lib/errors';
 import { requireAuth } from '../lib/auth';
 import { withDb } from '../lib/db';
+import { CardPatchSchema, CardsQuerySchema } from '../schemas';
 import { CONVERSATION_ID } from '../config';
-import { CARD_CATEGORIES } from '../types/curriculum';
+import type { ReferenceCard } from '../types/cards';
 
 /**
- * GET /api/cards
+ * Reference cards API.
  *
- * Paginated list of reference cards for the conversation. Sortable by
- * `weakest` (mastery ASC), `newest` (created_at DESC), or `alpha`
- * (term COLLATE NOCASE ASC). Filter by `category` and/or `era`.
+ *   GET    /api/cards         — list (sortable, filterable, paginated)
+ *   PATCH  /api/cards/:id     — student self-rates mastery (0..5)
  *
- * The Stage 5 frontend will surface these in the review panel; the
- * weakest-first default mirrors how spaced-repetition tools tend to drive
- * attention.
+ * Both endpoints require auth. Card mastery and times_reviewed bookkeeping
+ * is the only writer to a card row outside `lib/cards.persistCards` (which
+ * is the tutor-flagged path during chat).
  */
 
-/** Sort modes -> ORDER BY clauses. Keys are the only allowed user input. */
 const SORT_CLAUSES = {
   weakest: 'mastery ASC, created_at DESC',
   newest: 'created_at DESC',
@@ -27,26 +25,8 @@ const SORT_CLAUSES = {
 } as const satisfies Record<string, string>;
 type SortMode = keyof typeof SORT_CLAUSES;
 
-const CardsQuerySchema = z.object({
-  sort: z.enum(['weakest', 'newest', 'alpha'] as const).default('weakest'),
-  limit: z.coerce.number().int().min(1).max(100).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
-  category: z.enum(CARD_CATEGORIES).optional(),
-  era: z.string().min(1).max(64).optional(),
-});
-
-interface CardRow {
-  id: number;
-  term: string;
-  category: string;
-  definition: string;
-  era: string | null;
-  theme: string | null;
-  times_reviewed: number;
-  mastery: number;
-  created_at: number;
-  updated_at: number;
-}
+const CARD_COLUMNS = `id, term, category, definition, era, theme,
+                      times_reviewed, mastery, created_at, updated_at`;
 
 export async function handleCards(req: Request, env: Env): Promise<Response> {
   await requireAuth(req, env);
@@ -81,15 +61,14 @@ export async function handleCards(req: Request, env: Env): Promise<Response> {
 
     const cardsResult = await db.d1
       .prepare(
-        `SELECT id, term, category, definition, era, theme,
-                times_reviewed, mastery, created_at, updated_at
+        `SELECT ${CARD_COLUMNS}
          FROM reference_cards
          WHERE ${whereClause}
          ORDER BY ${orderClause}
          LIMIT ? OFFSET ?`,
       )
       .bind(...values, limit, offset)
-      .all<CardRow>();
+      .all<ReferenceCard>();
     const cards = cardsResult.results ?? [];
 
     return json({
@@ -97,5 +76,56 @@ export async function handleCards(req: Request, env: Env): Promise<Response> {
       total,
       has_more: offset + cards.length < total,
     });
+  });
+}
+
+/**
+ * PATCH /api/cards/:id
+ *
+ * Body: `{ mastery: 0..5 }`. Increments `times_reviewed` (every PATCH counts
+ * as a review event) and writes the new mastery. Returns the updated row,
+ * or 404 if no card with that id belongs to the conversation.
+ */
+export async function handleCardPatch(
+  req: Request,
+  env: Env,
+  _ctx: ExecutionContext,
+  pathParams: Record<string, string>,
+): Promise<Response> {
+  await requireAuth(req, env);
+
+  const idStr = pathParams.id ?? '';
+  const id = Number(idStr);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new ValidationError('invalid card id');
+  }
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    throw new ValidationError('invalid JSON body');
+  }
+  const parsed = CardPatchSchema.safeParse(body);
+  if (!parsed.success) {
+    throw new ValidationError('invalid card patch', parsed.error.issues);
+  }
+
+  return withDb(env, async (db) => {
+    const now = Date.now();
+    const result = await db.d1
+      .prepare(
+        `UPDATE reference_cards
+         SET mastery = ?, times_reviewed = times_reviewed + 1, updated_at = ?
+         WHERE id = ? AND conversation_id = ?
+         RETURNING ${CARD_COLUMNS}`,
+      )
+      .bind(parsed.data.mastery, now, id, CONVERSATION_ID)
+      .first<ReferenceCard>();
+
+    if (result === null) {
+      return errorResponse(404, 'card_not_found');
+    }
+    return json({ card: result });
   });
 }

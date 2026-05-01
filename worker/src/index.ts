@@ -7,19 +7,20 @@ import { handleHealth } from './routes/health';
 import { handleAuthPin, handleAuthStatus } from './routes/auth';
 import { handleChat } from './routes/chat';
 import { handleState } from './routes/state';
-import { handleCards } from './routes/cards';
+import { handleCardPatch, handleCards } from './routes/cards';
 
 /**
  * Worker entrypoint.
  *
- * Responsibilities live in three layers:
+ * Three layers:
  *   1. CORS preflight + origin allowlisting (this file).
  *   2. Route dispatch via the small `Router` class (`lib/router.ts`).
  *   3. Centralized error mapping (`toErrorResponse` in `lib/errors.ts`).
  *
- * Routes themselves never build error responses or set CORS headers — they
- * `throw` typed errors and return success bodies; this file applies CORS to
- * whatever comes back.
+ * Routes throw typed errors and return success bodies; this file applies
+ * CORS to whatever comes back. The CORS allowlist comes from `env.ALLOWED_ORIGIN`
+ * when set (Stage 5 production config) and falls back to the localhost dev
+ * origin so `wrangler dev` keeps working out-of-box.
  */
 
 const router = new Router()
@@ -28,20 +29,25 @@ const router = new Router()
   .add('GET', '/api/auth/status', handleAuthStatus)
   .add('POST', '/api/chat', handleChat)
   .add('GET', '/api/state', handleState)
-  .add('GET', '/api/cards', handleCards);
+  .add('GET', '/api/cards', handleCards)
+  .add('PATCH', '/api/cards/:id', handleCardPatch);
 
-/**
- * Build CORS headers for the given Origin. Returns an empty object when the
- * origin is not in the allowlist (or when the request is non-CORS, i.e. has
- * no Origin header). When non-empty, includes credentials + a Vary on Origin
- * so caches don't leak headers across origins.
- */
-function buildCorsHeaders(origin: string | null): Record<string, string> {
-  if (origin === null || !CORS_ALLOWED_ORIGINS.includes(origin)) return {};
+function getAllowedOrigins(env: Env): ReadonlyArray<string> {
+  if (env.ALLOWED_ORIGIN !== undefined && env.ALLOWED_ORIGIN.length > 0) {
+    return [env.ALLOWED_ORIGIN];
+  }
+  return CORS_ALLOWED_ORIGINS;
+}
+
+function buildCorsHeaders(
+  origin: string | null,
+  allowedOrigins: ReadonlyArray<string>,
+): Record<string, string> {
+  if (origin === null || !allowedOrigins.includes(origin)) return {};
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Credentials': 'true',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
@@ -61,7 +67,7 @@ function applyCors(response: Response, cors: Record<string, string>): Response {
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const cors = buildCorsHeaders(request.headers.get('Origin'));
+    const cors = buildCorsHeaders(request.headers.get('Origin'), getAllowedOrigins(env));
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: cors });
