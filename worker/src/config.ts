@@ -79,3 +79,35 @@ export const COMPACTION_MODEL = 'claude-haiku-4-5';
 
 /** Token budget for the summary text. ~300-500 words plus headroom. */
 export const MAX_OUTPUT_TOKENS_COMPACTION = 1500;
+
+// ---------------------------------------------------------------------------
+// Evaluation pass (Stage 4)
+// ---------------------------------------------------------------------------
+
+/** Smaller model for the eval pass. JSON extraction doesn't need Sonnet. */
+export const EVALUATION_MODEL = 'claude-haiku-4-5';
+
+/** Token budget for the JSON eval record. ~200-400 tokens of JSON + headroom. */
+export const MAX_OUTPUT_TOKENS_EVALUATION = 800;
+
+/** How many recent turns the eval pass sees (oldest first). */
+export const EVALUATION_CONTEXT_TURNS = 6;
+
+// ---------------------------------------------------------------------------
+// Knowledge map merge caps (Stage 4)
+// ---------------------------------------------------------------------------
+
+/** Hard cap on the `weak_areas` array. Older entries are dropped on overflow. */
+export const MAX_WEAK_AREAS = 20;
+
+/** Hard cap on `diagnostic_notes` length in characters. Head is truncated. */
+export const MAX_DIAGNOSTIC_NOTES_CHARS = 2000;
+
+/** Threshold beyond which a skill observation can lower the recorded strength. */
+export const SKILL_FORGET_THRESHOLD_TURNS = 10;
+
+/** Per-message cap on cards extracted from the tutor's reply. */
+export const MAX_CARDS_PER_MESSAGE = 5;
+
+/** Truncate per-card weak-area entries to this length. */
+export const MAX_WEAK_AREA_CHARS = 200;

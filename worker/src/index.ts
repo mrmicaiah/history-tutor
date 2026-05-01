@@ -6,6 +6,8 @@ import { CORS_ALLOWED_ORIGINS } from './config';
 import { handleHealth } from './routes/health';
 import { handleAuthPin, handleAuthStatus } from './routes/auth';
 import { handleChat } from './routes/chat';
+import { handleState } from './routes/state';
+import { handleCards } from './routes/cards';
 
 /**
  * Worker entrypoint.
@@ -24,7 +26,9 @@ const router = new Router()
   .add('GET', '/api/health', handleHealth)
   .add('POST', '/api/auth/pin', handleAuthPin)
   .add('GET', '/api/auth/status', handleAuthStatus)
-  .add('POST', '/api/chat', handleChat);
+  .add('POST', '/api/chat', handleChat)
+  .add('GET', '/api/state', handleState)
+  .add('GET', '/api/cards', handleCards);
 
 /**
  * Build CORS headers for the given Origin. Returns an empty object when the

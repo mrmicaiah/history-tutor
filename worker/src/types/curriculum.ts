@@ -52,3 +52,22 @@ export type SkillStrength = (typeof SKILL_STRENGTHS)[number];
 
 /** Repetition strength of a known fact: 1=once, 2=twice, 3=multiple. */
 export type FactStrength = 1 | 2 | 3;
+
+/**
+ * Signal values the evaluation pass emits per era / theme. A subset of
+ * Competence -- 'untested' is a starting state, never a signal: there is
+ * no evidence of "the student demonstrated they don't know X".
+ */
+export const COMPETENCE_SIGNALS = ['shaky', 'familiar', 'solid'] as const;
+export type CompetenceSignal = (typeof COMPETENCE_SIGNALS)[number];
+
+/** Reference card categories. Mirrors the CHECK constraint in 0001_initial.sql. */
+export const CARD_CATEGORIES = [
+  'person',
+  'event',
+  'date',
+  'place',
+  'term',
+  'concept',
+] as const;
+export type CardCategory = (typeof CARD_CATEGORIES)[number];

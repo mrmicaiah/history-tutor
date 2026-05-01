@@ -97,17 +97,19 @@ or `wrangler pages deploy pages/public`. Stage 1 ships only a placeholder.
 |     1 | Scaffolding, D1 schema, health check                |   ✓    |
 |     2 | Chat route, PIN gate, Claude integration, logging   |   ✓    |
 |     3 | Knowledge map + summary + compaction (memory layer) |   ✓    |
-|     4 | Real tutor prompt + evaluation pass                 |   —    |
+|     4 | Real tutor prompt + evaluation pass + cards         |   ✓    |
 |     5 | Frontend                                            |   —    |
 
-## API surface (Stage 2)
+## API surface
 
-| Method | Path               | Description                                                          |
-| -----: | :----------------- | :------------------------------------------------------------------- |
-|    GET | `/api/health`      | Liveness + DB binding probe. Public.                                 |
-|   POST | `/api/auth/pin`    | Body `{pin}`; on success sets `htsess` cookie. 5/5min per IP.        |
-|    GET | `/api/auth/status` | Returns `{authenticated: bool}`. Public.                             |
-|   POST | `/api/chat`        | Body `{message}`; returns `{reply}`. Auth required. 30/min global.   |
+| Method | Path               | Description                                                                    |
+| -----: | :----------------- | :----------------------------------------------------------------------------- |
+|    GET | `/api/health`      | Liveness + DB binding probe. Public.                                           |
+|   POST | `/api/auth/pin`    | Body `{pin}`; on success sets `htsess` cookie. 5/5min per IP.                  |
+|    GET | `/api/auth/status` | Returns `{authenticated: bool}`. Public.                                       |
+|   POST | `/api/chat`        | Body `{message}` → `{reply}`. Auth required. 30/min. Triggers eval+compaction. |
+|    GET | `/api/state`       | Returns `{map, summary, turn_count}`. Auth required.                           |
+|    GET | `/api/cards`       | Paginated reference cards. Query: `sort`/`limit`/`offset`/`category`/`era`.    |
 
 ## Repository layout
 
