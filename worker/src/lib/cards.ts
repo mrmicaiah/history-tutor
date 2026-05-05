@@ -16,6 +16,10 @@ import { MAX_CARDS_PER_MESSAGE } from '../config';
  *   - persists the parsed cards into `reference_cards` with de-duplication
  *     keyed on `(conversation_id, term)` (`persistCards`).
  *
+ * As a defense-in-depth measure, `scrubVisibleReply` runs unconditionally
+ * on every assistant reply before it's persisted or returned, removing any
+ * stray markup (`<cards>` tags, `[[...]]` lines) that escaped extraction.
+ *
  * All card writes happen inside one `db.batch()` to avoid N round trips when
  * the tutor flags multiple cards in a single turn.
  */
@@ -28,12 +32,21 @@ export interface ParsedCard {
   theme: string | null;
 }
 
-const CARDS_BLOCK_RE = /<cards>([\s\S]*?)<\/cards>\s*$/;
+// Strict: well-formed <cards>...</cards> at end of message (allows trailing whitespace).
+const CARDS_BLOCK_RE = /<cards>([\s\S]*?)<\/cards>\s*$/i;
+// Lenient fallback: opening <cards> with no closing tag — strip from there to EOM.
+const CARDS_OPEN_RE = /<cards>([\s\S]*)$/i;
 const CARD_LINE_RE = /^\s*\[\[(.+?)\]\]\s*$/;
 
 /**
  * Split a tutor reply into the user-visible portion and the parsed card
  * list. The cards block, if present, is stripped from the visible reply.
+ *
+ * Two-pass parser:
+ *   1. Try the strict regex (well-formed block at end of message).
+ *   2. If strict misses but an unclosed <cards> tag exists, strip from
+ *      that tag to end-of-message and parse what's there leniently.
+ *      This protects against the model forgetting the </cards> tag.
  *
  * Tolerates malformed lines (logs a warning, skips the line). Hard-caps at
  * `MAX_CARDS_PER_MESSAGE`; surplus cards are dropped with a warning.
@@ -42,13 +55,30 @@ export function extractCards(rawReply: string): {
   visibleReply: string;
   cards: ParsedCard[];
 } {
-  const match = CARDS_BLOCK_RE.exec(rawReply);
+  // Pass 1: strict, end-anchored.
+  let match: RegExpExecArray | null = CARDS_BLOCK_RE.exec(rawReply);
+  let lenient = false;
+
+  // Pass 2: lenient fallback for missing closing tag.
+  if (!match) {
+    match = CARDS_OPEN_RE.exec(rawReply);
+    if (match) {
+      lenient = true;
+      log.warn('cards_unclosed_block', { reply_length: rawReply.length });
+    }
+  }
+
   if (!match) {
     return { visibleReply: rawReply.trim(), cards: [] };
   }
 
   const visibleReply = rawReply.slice(0, match.index).trim();
-  const block = match[1] ?? '';
+  let block = match[1] ?? '';
+  // In lenient mode, the block may have a stray </cards> if the model placed
+  // it but didn't close cleanly enough for the strict regex. Strip it.
+  if (lenient) {
+    block = block.replace(/<\/cards>[\s\S]*$/i, '');
+  }
 
   const lines = block
     .split('\n')
@@ -66,6 +96,33 @@ export function extractCards(rawReply: string): {
     return { visibleReply, cards: cards.slice(0, MAX_CARDS_PER_MESSAGE) };
   }
   return { visibleReply, cards };
+}
+
+/**
+ * Defense-in-depth: scrub any residual cards-block markup from a reply
+ * before it's shown to the student. Runs after `extractCards` on every
+ * assistant reply. If this function actually changes anything, it means
+ * `extractCards` had a hole — log a warning so we can investigate.
+ *
+ * Removes:
+ *   - stray <cards> or </cards> tags (case-insensitive)
+ *   - stray [[...]] lines (the bracket markup)
+ *   - excess blank lines left behind by the above
+ */
+export function scrubVisibleReply(reply: string): string {
+  const before = reply;
+  const scrubbed = reply
+    .replace(/<\/?cards>/gi, '')
+    .replace(/\[\[[^\]]*?\]\]/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  if (scrubbed !== before) {
+    log.warn('cards_scrub_fired', {
+      original_length: before.length,
+      scrubbed_length: scrubbed.length,
+    });
+  }
+  return scrubbed;
 }
 
 function parseCardLine(line: string): ParsedCard | null {
