@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { env } from 'cloudflare:test';
-import { extractCards, persistCards, type ParsedCard } from './cards';
+import { extractCards, persistCards, scrubVisibleReply, type ParsedCard } from './cards';
 import { CONVERSATION_ID, MAX_CARDS_PER_MESSAGE } from '../config';
 import { dbCtx, insertTurn, resetTables } from '../test/helpers';
 
@@ -77,6 +77,71 @@ not even a card line
     const { cards } = extractCards(reply);
     expect(cards[0]?.era).toBeNull();
     expect(cards[0]?.theme).toBeNull();
+  });
+
+  // Stage 6.6 regression tests: the bug Kayla saw on 2026-05-01.
+
+  it('strips a cards block followed by trailing whitespace and newlines', () => {
+    const reply = `Empires lasted because they balanced central power and local autonomy.
+
+<cards>
+[[Ottoman Empire | term | Multi-ethnic Islamic empire (1299-1922) controlling Southeast Europe and the Middle East | land-empires | governance]]
+</cards>
+   
+
+`;
+    const { visibleReply, cards } = extractCards(reply);
+    expect(visibleReply).not.toContain('<cards>');
+    expect(visibleReply).not.toContain('[[');
+    expect(visibleReply.endsWith('autonomy.')).toBe(true);
+    expect(cards).toHaveLength(1);
+    expect(cards[0]?.term).toBe('Ottoman Empire');
+  });
+
+  it('strips a cards block when </cards> is missing entirely (lenient mode)', () => {
+    // This is the actual bug Kayla saw: model emitted opening tag and bracket
+    // lines but truncated before the closing tag. Strict regex misses;
+    // lenient fallback should still strip and parse what's there.
+    const reply = `Which empire interests you most, or what aspect of how they functioned do you want to explore?
+
+<cards>
+[[Ottoman Empire | term | Multi-ethnic Islamic empire (1299-1922) controlling Southeast Europe, North Africa, and Middle East; conquered Constantinople 1453 | land-empires | governance]]
+[[Millet system | term | Ottoman policy allowing religious communities to govern themselves internally under their own laws | land-empires | governance]]`;
+    const { visibleReply, cards } = extractCards(reply);
+    expect(visibleReply).not.toContain('<cards>');
+    expect(visibleReply).not.toContain('[[');
+    expect(visibleReply.endsWith('explore?')).toBe(true);
+    expect(cards).toHaveLength(2);
+    expect(cards[0]?.term).toBe('Ottoman Empire');
+    expect(cards[1]?.term).toBe('Millet system');
+  });
+});
+
+describe('cards.scrubVisibleReply', () => {
+  it('passes clean text through unchanged', () => {
+    const input = 'A normal tutor reply with no markup.';
+    expect(scrubVisibleReply(input)).toBe(input);
+  });
+
+  it('removes stray <cards> and </cards> tags that escaped the parser', () => {
+    const input = 'Some text <cards> and more text </cards> end.';
+    const out = scrubVisibleReply(input);
+    expect(out).not.toContain('<cards>');
+    expect(out).not.toContain('</cards>');
+  });
+
+  it('removes stray [[...]] markup that escaped the parser', () => {
+    const input = 'Genghis Khan unified the Mongols.\n[[Genghis Khan | person | leader | exchange | governance]]';
+    const out = scrubVisibleReply(input);
+    expect(out).not.toContain('[[');
+    expect(out).not.toContain(']]');
+    expect(out).toContain('Genghis Khan unified the Mongols.');
+  });
+
+  it('collapses excess blank lines left behind after scrubbing', () => {
+    const input = 'First paragraph.\n\n\n\n\nSecond paragraph.';
+    const out = scrubVisibleReply(input);
+    expect(out).toBe('First paragraph.\n\nSecond paragraph.');
   });
 });
 

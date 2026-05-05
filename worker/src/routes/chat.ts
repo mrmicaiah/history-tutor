@@ -17,7 +17,7 @@ import {
 } from '../lib/memory';
 import { compactIfNeeded } from '../lib/compaction';
 import { runEvaluation } from '../lib/evaluation';
-import { extractCards, persistCards } from '../lib/cards';
+import { extractCards, persistCards, scrubVisibleReply } from '../lib/cards';
 import { upsertTurnMetadata } from '../lib/turn-metadata';
 import { buildTutorSystemPrompt } from '../prompts/tutor';
 import {
@@ -35,7 +35,7 @@ import { log } from '../lib/logger';
  * Body: { message: string }
  * Success: 200 { reply: string }
  *
- * Stage 4 flow:
+ * Stage 4 flow + Stage 6.6 scrub safeguard:
  *   1. Auth + body validation.
  *   2. withDb:
  *      a. Rate-limit.
@@ -44,12 +44,14 @@ import { log } from '../lib/logger';
  *         and a session-context cue, then wrap with knowledge_map +
  *         session_summary blocks via `buildClaudeInput`.
  *      d. Call Claude (tutor model).
- *      e. Strip the trailing `<cards>...</cards>` block; insert the
- *         user-visible portion as the assistant turn; persist any cards.
+ *      e. Strip the trailing `<cards>...</cards>` block via `extractCards`,
+ *         then run `scrubVisibleReply` as a defense-in-depth pass to remove
+ *         any residual markup that escaped the parser. Insert the scrubbed
+ *         reply as the assistant turn; persist any cards.
  *      f. Persist token counts to `turn_metadata`
  *         (input on user-turn row, output on assistant-turn row).
  *      g. Touch conversation.updated_at.
- *   3. Schedule the eval pass and compaction via `ctx.waitUntil` — both
+ *   3. Schedule the eval pass and compaction via `ctx.waitUntil` \u2014 both
  *      are best-effort; failures are logged but never break the response.
  *   4. Return the visible reply.
  */
@@ -98,7 +100,12 @@ export async function handleChat(
       maxTokens: MAX_OUTPUT_TOKENS_CHAT,
     });
 
-    const { visibleReply, cards } = extractCards(claudeResult.content);
+    const { visibleReply: extracted, cards } = extractCards(claudeResult.content);
+    // Defense-in-depth: even if extractCards missed something (e.g. a malformed
+    // block format we haven't seen yet), this scrub guarantees no raw markup
+    // ever reaches the student. When it actually fires, it logs a warning.
+    const visibleReply = scrubVisibleReply(extracted);
+
     const assistantTurnId = await insertTurn(
       db,
       CONVERSATION_ID,
