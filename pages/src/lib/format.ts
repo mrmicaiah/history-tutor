@@ -43,3 +43,21 @@ export function eraLabel(id: string): string {
 export function themeLabel(id: string): string {
   return THEME_LABELS[id] ?? id;
 }
+
+/**
+ * Strip any residual reference-card markup from an assistant reply at render
+ * time. The worker already scrubs replies before persisting (see
+ * `worker/src/lib/cards.ts::scrubVisibleReply`), but historical turns persisted
+ * before that safeguard landed may still contain raw `<cards>` blocks or
+ * `[[term | category | ...]]` lines. Mirroring the worker's regexes here
+ * cleans those up at display time without touching the database.
+ */
+export function scrubReply(text: string): string {
+  return text
+    .replace(/<cards>[\s\S]*?<\/cards>/gi, '')
+    .replace(/<cards>[\s\S]*$/i, '')
+    .replace(/<\/?cards>/gi, '')
+    .replace(/\[\[[^\]]*?\]\]/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}

@@ -6,6 +6,7 @@ import {
 } from '../state';
 import { api, ApiError } from '../api';
 import { clearChildren, el, on } from '../lib/dom';
+import { scrubReply } from '../lib/format';
 import { MessageAudio, stopAllAudio } from '../components/audio-player';
 import { ICON_VOLUME_OFF, ICON_VOLUME_ON } from '../components/audio-icons';
 import { startThinkingRotation } from '../components/thinking-rotation';
@@ -30,7 +31,9 @@ const audioPlayers = new Map<number, MessageAudio>();
 function audioFor(msg: ChatMessage): MessageAudio {
   let player = audioPlayers.get(msg.ts);
   if (player === undefined) {
-    player = new MessageAudio(msg.content);
+    // Use the scrubbed text for TTS too — cards markup must never reach
+    // ElevenLabs (it would be spoken aloud).
+    player = new MessageAudio(scrubReply(msg.content));
     audioPlayers.set(msg.ts, player);
   }
   return player;
@@ -161,12 +164,17 @@ function renderMessages(
  * when audio is disabled). User bubbles are inert. The interactivity hint
  * (cursor, tap-flash) is gated by the parent's `data-audio-enabled` attr
  * via CSS, so we don't need to re-render bubbles when the toggle flips.
+ *
+ * Assistant content is run through `scrubReply` before display. The worker
+ * scrubs going forward, but historical rows may still contain raw <cards>
+ * markup; this guarantees they render clean without any DB modification.
  */
 function MessageBubble(msg: ChatMessage): HTMLElement {
   const article = el('article', {
     class: msg.role === 'user' ? 'msg msg-user' : 'msg msg-tutor',
   });
-  article.appendChild(el('div', { class: 'msg-content' }, msg.content));
+  const displayText = msg.role === 'assistant' ? scrubReply(msg.content) : msg.content;
+  article.appendChild(el('div', { class: 'msg-content' }, displayText));
   if (msg.role === 'assistant') {
     article.setAttribute('role', 'button');
     article.tabIndex = 0;
